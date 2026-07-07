@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSentinel — AI Code Review & Bug Tracker</title>
+    
+    <!-- Google Fonts (Inter & Outfit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Prism.js (Tomorrow Dark theme for syntax highlighting) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    
+    <!-- Custom Style System -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <div class="logo-shield">
+                        <i data-lucide="shield-check" class="logo-icon animate-pulse"></i>
+                    </div>
+                    <span class="logo-text">CodeSentinel</span>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" data-target="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-item" data-target="new-review">
+                    <i data-lucide="code-2"></i>
+                    <span>New Review</span>
+                </button>
+                <button class="nav-item" data-target="history">
+                    <i data-lucide="history"></i>
+                    <span>Review History</span>
+                </button>
+                <button class="nav-item" data-target="kanban">
+                    <i data-lucide="trello"></i>
+                    <span>Kanban Board</span>
+                    <span class="badge" id="sidebar-ticket-count">0</span>
+                </button>
+                <button class="nav-item" data-target="analytics">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Analytics</span>
+                </button>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button id="btn-open-settings" class="settings-trigger">
+                    <span class="status-dot green" id="api-status-dot"></span>
+                    <i data-lucide="key-round"></i>
+                    <span>Gemini API Key</span>
+                </button>
+                <div class="theme-info">v2.5.0 • Flash Engine</div>
+            </div>
+        </aside>
+        
+        <!-- Main Panel Content -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="top-bar">
+                <div class="header-title-section">
+                    <h1 id="page-title">Dashboard</h1>
+                    <p id="page-subtitle" class="text-muted">Aegis Core Code Review and Bug Tracker System</p>
+                </div>
+                
+                <div class="header-actions">
+                    <div class="quick-stats">
+                        <div class="stat-pill">
+                            <span class="pill-label">Avg Quality</span>
+                            <span class="pill-value" id="quick-score">-</span>
+                        </div>
+                        <div class="stat-pill">
+                            <span class="pill-label">Open Bugs</span>
+                            <span class="pill-value text-red" id="quick-bugs">0</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Views Container -->
+            <div class="view-viewport">
+                
+                <!-- 1. DASHBOARD VIEW -->
+                <section id="view-dashboard" class="view-panel active">
+                    <div class="welcome-card">
+                        <div class="welcome-text">
+                            <h2>Verify. Secure. Optimize.</h2>
+                            <p>Submit your code snippets or files for deep analysis. CodeSentinel uses Gemini 2.5 Flash to locate logical bugs, security gaps, performance bottlenecks, and style recommendations, allowing you to instantly push them into trackable Kanban tickets.</p>
+                            <button class="btn btn-primary" onclick="switchView('new-review')">
+                                <i data-lucide="plus-circle"></i> Submit New Code
+                            </button>
+                        </div>
+                        <div class="welcome-visual">
+                            <i data-lucide="scan-eye" class="visual-shield"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-3">
+                        <div class="glass-card stat-card">
+                            <div class="stat-icon-wrapper purple">
+                                <i data-lucide="activity"></i>
+                            </div>
+                            <div class="stat-data">
+                                <span class="stat-number" id="dash-score-value">N/A</span>
+                                <span class="stat-label">Avg Quality Score</span>
+                            </div>
+                            <div class="stat-sub">Across all code reviews</div>
+                        </div>
+                        
+                        <div class="glass-card stat-card">
+                            <div class="stat-icon-wrapper red">
+                                <i data-lucide="bug"></i>
+                            </div>
+                            <div class="stat-data">
+                                <span class="stat-number" id="dash-bugs-value">0</span>
+                                <span class="stat-label">Tracked Tickets</span>
+                            </div>
+                            <div class="stat-sub">Active in Kanban board</div>
+                        </div>
+                        
+                        <div class="glass-card stat-card text-emerald">
+                            <div class="stat-icon-wrapper emerald">
+                                <i data-lucide="check-square"></i>
+                            </div>
+                            <div class="stat-data">
+                                <span class="stat-number" id="dash-resolved-value">0</span>
+                                <span class="stat-label">Resolved Issues</span>
+                            </div>
+                            <div class="stat-sub">Bugs closed and merged</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-2-1">
+                        <!-- Recent Reviews -->
+                        <div class="glass-card">
+                            <div class="card-header">
+                                <h3><i data-lucide="history"></i> Recent Reviews</h3>
+                                <button class="btn btn-link" onclick="switchView('history')">View All</button>
+                            </div>
+                            <div class="recent-list" id="dash-recent-reviews">
+                                <div class="empty-state">
+                                    <i data-lucide="folder-open"></i>
+                                    <p>No code reviews performed yet.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- High Priority Tickets -->
+                        <div class="glass-card">
+                            <div class="card-header">
+                                <h3><i data-lucide="alert-triangle"></i> Hot Tickets</h3>
+                                <button class="btn btn-link" onclick="switchView('kanban')">Open Board</button>
+                            </div>
+                            <div class="recent-list" id="dash-hot-tickets">
+                                <div class="empty-state">
+                                    <i data-lucide="shield-alert"></i>
+                                    <p>No pending bug tickets.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 2. NEW REVIEW VIEW -->
+                <section id="view-new-review" class="view-panel">
+                    <div class="review-layout">
+                        <!-- Input Configuration -->
+                        <div class="glass-card input-form-card">
+                            <div class="card-header border-bottom">
+                                <h3>Configure Submission</h3>
+                            </div>
+                            
+                            <form id="code-review-form" class="review-form">
+                                <div class="form-group">
+                                    <label for="input-filename">File Name</label>
+                                    <div class="input-with-icon">
+                                        <i data-lucide="file-code"></i>
+                                        <input type="text" id="input-filename" placeholder="e.g. auth_controller.py" required value="main.py">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="input-language">Programming Language</label>
+                                    <div class="input-with-icon">
+                                        <i data-lucide="code-2"></i>
+                                        <select id="input-language" required>
+                                            <option value="python">Python</option>
+                                            <option value="javascript">JavaScript</option>
+                                            <option value="typescript">TypeScript</option>
+                                            <option value="html">HTML / CSS</option>
+                                            <option value="sql">SQL</option>
+                                            <option value="other">Other / Plain Text</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Analysis Focus Areas</label>
+                                    <div class="checkbox-grid">
+                                        <label class="checkbox-pill">
+                                            <input type="checkbox" id="focus-security" checked>
+                                            <span>Security</span>
+                                        </label>
+                                        <label class="checkbox-pill">
+                                            <input type="checkbox" id="focus-bugs" checked>
+                                            <span>Bugs / Safety</span>
+                                        </label>
+                                        <label class="checkbox-pill">
+                                            <input type="checkbox" id="focus-performance" checked>
+                                            <span>Performance</span>
+                                        </label>
+                                        <label class="checkbox-pill">
+                                            <input type="checkbox" id="focus-style" checked>
+                                            <span>Style & Quality</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label>Or Upload a File</label>
+                                    <div class="file-dropzone" id="dropzone">
+                                        <i data-lucide="upload-cloud" class="dropzone-icon"></i>
+                                        <span class="dropzone-text">Drag and drop file here or <span class="highlight">browse</span></span>
+                                        <input type="file" id="file-uploader" class="hidden-file-input">
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary btn-block btn-large mt-4" id="btn-submit-review">
+                                    <i data-lucide="play"></i> Analyze Code Snippet
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Code Editor Textarea -->
+                        <div class="glass-card editor-card">
+                            <div class="card-header border-bottom flex-between">
+                                <h3>Code Input Workspace</h3>
+                                <button class="btn btn-outline btn-small" id="btn-clear-editor" type="button">
+                                    <i data-lucide="rotate-ccw"></i> Clear
+                                </button>
+                            </div>
+                            <div class="editor-textarea-container">
+                                <div class="editor-gutter" id="editor-gutter">1</div>
+                                <textarea id="code-textarea" placeholder="Paste your source code snippet here...
+
+Example:
+def calculate_average(items):
+    total = sum(items)
+    return total / len(items) # What if items is empty?
+" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Loading Overlay -->
+                    <div class="loading-overlay" id="loading-overlay">
+                        <div class="loading-spinner-container">
+                            <div class="spinner-core"></div>
+                            <h3 class="mt-4">Sentinel Inspecting Source...</h3>
+                            <p class="text-muted text-center max-w-sm mt-2">Uploading code structure to Gemini 2.5 Flash. Running heuristic static scans, mapping safety constraints, and assessing complexity parameters...</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 3. REVIEW REPORT INSPECTOR VIEW -->
+                <section id="view-review-inspector" class="view-panel">
+                    <div class="inspector-dashboard-summary glass-card mb-4">
+                        <div class="gauge-container">
+                            <div class="circle-gauge" id="report-score-gauge">
+                                <svg viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="45" class="gauge-bg"></circle>
+                                    <circle cx="50" cy="50" r="45" class="gauge-fill" id="report-score-ring" stroke-dasharray="282.7" stroke-dashoffset="141"></circle>
+                                </svg>
+                                <span class="gauge-value" id="report-score-value">75</span>
+                            </div>
+                            <div class="gauge-meta">
+                                <h3 id="report-filename">main.py</h3>
+                                <span class="badge purple" id="report-engine-badge">AI Flash Engine</span>
+                                <p id="report-summary-text" class="text-muted mt-1">Review summarized here...</p>
+                            </div>
+                        </div>
+                        <div class="divider-vertical"></div>
+                        <div class="report-stats-grid">
+                            <div class="report-stat-box red">
+                                <div class="report-stat-num" id="report-bugs">0</div>
+                                <div class="report-stat-lbl">Logical Bugs</div>
+                            </div>
+                            <div class="report-stat-box orange">
+                                <div class="report-stat-num" id="report-sec">0</div>
+                                <div class="report-stat-lbl">Security Risks</div>
+                            </div>
+                            <div class="report-stat-box yellow">
+                                <div class="report-stat-num" id="report-perf">0</div>
+                                <div class="report-stat-lbl">Performance</div>
+                            </div>
+                            <div class="report-stat-box blue">
+                                <div class="report-stat-num" id="report-style">0</div>
+                                <div class="report-stat-lbl">Style Issues</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="inspector-layout">
+                        <!-- Code Visualized Panel -->
+                        <div class="glass-card viewer-card">
+                            <div class="card-header border-bottom flex-between">
+                                <h3>Annotated Source Code</h3>
+                                <div class="viewer-actions">
+                                    <span class="text-muted text-xs mr-2">Click colored line markers to review concerns</span>
+                                    <span class="badge" id="viewer-lang-badge">PYTHON</span>
+                                </div>
+                            </div>
+                            <div class="code-view-wrapper">
+                                <pre id="annotated-code-container"><code class="language-python" id="highlighted-code"># Annotated code loads here</code></pre>
+                            </div>
+                        </div>
+                        
+                        <!-- Issues Panel -->
+                        <div class="issues-panel">
+                            <!-- Filters -->
+                            <div class="tabs-scroll glass-card px-2 py-2 mb-3 flex-between">
+                                <div class="issue-filter-tabs">
+                                    <button class="filter-tab active" data-filter="all">All (<span id="count-all">0</span>)</button>
+                                    <button class="filter-tab text-red" data-filter="bug">Bugs (<span id="count-bugs">0</span>)</button>
+                                    <button class="filter-tab text-orange" data-filter="security">Security (<span id="count-sec">0</span>)</button>
+                                    <button class="filter-tab text-yellow" data-filter="performance">Perf (<span id="count-perf">0</span>)</button>
+                                    <button class="filter-tab text-blue" data-filter="style">Style (<span id="count-style">0</span>)</button>
+                                    <button class="filter-tab text-emerald" data-filter="positive">Good (<span id="count-pos">0</span>)</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Issue Cards List -->
+                            <div class="issues-cards-list" id="report-issues-list">
+                                <!-- Cards injected here -->
+                            </div>
+                            
+                            <!-- Complexity Insights Card -->
+                            <div class="glass-card mt-3">
+                                <div class="card-header border-bottom">
+                                    <h3><i data-lucide="gauge"></i> Complexity Parameters</h3>
+                                </div>
+                                <div class="card-body py-4">
+                                    <div class="complexity-row">
+                                        <span class="complexity-lbl">Time Complexity:</span>
+                                        <strong id="complexity-time" class="text-purple">O(1)</strong>
+                                    </div>
+                                    <div class="complexity-row mt-2">
+                                        <span class="complexity-lbl">Space Complexity:</span>
+                                        <strong id="complexity-space" class="text-purple">O(1)</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 4. HISTORY VIEW -->
+                <section id="view-history" class="view-panel">
+                    <div class="glass-card mb-4 p-4 flex-between">
+                        <h3>Code Audit Reports Archive</h3>
+                        <div class="search-filters">
+                            <input type="text" id="history-search" class="search-input" placeholder="Search audits by filename...">
+                        </div>
+                    </div>
+                    
+                    <div class="history-list-grid" id="history-list">
+                        <!-- History items injected here -->
+                        <div class="empty-state">
+                            <i data-lucide="folder-git-2"></i>
+                            <p>No historical audits found. Submit code on the "New Review" tab.</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 5. KANBAN BOARD VIEW -->
+                <section id="view-kanban" class="view-panel">
+                    <div class="kanban-info-bar glass-card mb-4 flex-between">
+                        <div class="info-details">
+                            <h3>Code Bug Tracking Board</h3>
+                            <p class="text-muted text-xs">Convert code review issues into actionable tasks and manage their progress here. Drag cards to update their status.</p>
+                        </div>
+                        <button class="btn btn-outline" id="btn-create-manual-ticket">
+                            <i data-lucide="plus"></i> New Task Ticket
+                        </button>
+                    </div>
+                    
+                    <div class="kanban-board">
+                        <!-- COLUMN 1: BACKLOG -->
+                        <div class="kanban-column" id="col-backlog" data-status="backlog">
+                            <div class="column-header text-gray">
+                                <span class="dot-indicator bg-gray"></span>
+                                <h4>Backlog</h4>
+                                <span class="column-count" id="count-col-backlog">0</span>
+                            </div>
+                            <div class="column-cards-container" id="cards-backlog">
+                                <!-- Cards -->
+                            </div>
+                        </div>
+                        
+                        <!-- COLUMN 2: TO DO -->
+                        <div class="kanban-column" id="col-todo" data-status="todo">
+                            <div class="column-header text-blue">
+                                <span class="dot-indicator bg-blue"></span>
+                                <h4>To Do</h4>
+                                <span class="column-count" id="count-col-todo">0</span>
+                            </div>
+                            <div class="column-cards-container" id="cards-todo">
+                                <!-- Cards -->
+                            </div>
+                        </div>
+                        
+                        <!-- COLUMN 3: IN PROGRESS -->
+                        <div class="kanban-column" id="col-in-progress" data-status="in_progress">
+                            <div class="column-header text-orange">
+                                <span class="dot-indicator bg-orange"></span>
+                                <h4>In Progress</h4>
+                                <span class="column-count" id="count-col-in-progress">0</span>
+                            </div>
+                            <div class="column-cards-container" id="cards-in-progress">
+                                <!-- Cards -->
+                            </div>
+                        </div>
+                        
+                        <!-- COLUMN 4: DONE -->
+                        <div class="kanban-column" id="col-done" data-status="done">
+                            <div class="column-header text-emerald">
+                                <span class="dot-indicator bg-emerald"></span>
+                                <h4>Resolved</h4>
+                                <span class="column-count" id="count-col-done">0</span>
+                            </div>
+                            <div class="column-cards-container" id="cards-done">
+                                <!-- Cards -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 6. ANALYTICS VIEW -->
+                <section id="view-analytics" class="view-panel">
+                    <div class="grid grid-2">
+                        <!-- Score Trend -->
+                        <div class="glass-card chart-card">
+                            <div class="card-header border-bottom">
+                                <h3><i data-lucide="trending-up"></i> Code Quality Trend</h3>
+                            </div>
+                            <div class="chart-container-inner">
+                                <canvas id="chart-score-trend"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Issue Distribution -->
+                        <div class="glass-card chart-card">
+                            <div class="card-header border-bottom">
+                                <h3><i data-lucide="pie-chart"></i> Issue Category Breakdown</h3>
+                            </div>
+                            <div class="chart-container-inner">
+                                <canvas id="chart-issue-dist"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Ticket Funnel -->
+                        <div class="glass-card chart-card">
+                            <div class="card-header border-bottom">
+                                <h3><i data-lucide="bar-chart-4"></i> Kanban Workflow Funnel</h3>
+                            </div>
+                            <div class="chart-container-inner">
+                                <canvas id="chart-ticket-funnel"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Ticket Severity -->
+                        <div class="glass-card chart-card">
+                            <div class="card-header border-bottom">
+                                <h3><i data-lucide="alert-circle"></i> Open Bugs Severity Ratio</h3>
+                            </div>
+                            <div class="chart-container-inner">
+                                <canvas id="chart-severity"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+            </div>
+        </main>
+    </div>
+    
+    <!-- 1. SETTINGS DIALOG (NATIVE MODAL) -->
+    <dialog id="modal-settings" class="glass-modal">
+        <div class="modal-header">
+            <h3><i data-lucide="settings"></i> System Configuration</h3>
+            <button class="modal-close-btn" onclick="document.getElementById('modal-settings').close()">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="settings-api-key">Google Gemini API Key</label>
+                <input type="password" id="settings-api-key" placeholder="Enter AIzaSy... API key" class="text-input">
+                <p class="help-text mt-1 text-muted">Enter a custom Gemini API key. This key is stored securely in your browser's local storage and is sent only to Google's API endpoint. If empty, the system automatically falls back to the high-performance local static parser.</p>
+            </div>
+            
+            <div class="flex-between mt-4">
+                <button class="btn btn-outline" id="btn-test-api">
+                    Test Connection
+                </button>
+                <div class="flex-end gap-2">
+                    <button class="btn btn-link" id="btn-clear-api">Clear Key</button>
+                    <button class="btn btn-primary" id="btn-save-api">Save Settings</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+    
+    <!-- 2. TICKET DETAIL DIALOG (NATIVE MODAL) -->
+    <dialog id="modal-ticket" class="glass-modal ticket-detail-modal">
+        <div class="modal-header border-bottom">
+            <div>
+                <span class="badge" id="modal-ticket-id">TIC-101</span>
+                <h3 id="modal-ticket-title" class="mt-1">Ticket Title</h3>
+            </div>
+            <button class="modal-close-btn" onclick="document.getElementById('modal-ticket').close()">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="modal-body grid grid-2-1-modal">
+            <div class="ticket-main-details">
+                <h4 class="section-title">Description</h4>
+                <div class="ticket-desc-box scrollable" id="modal-ticket-description">
+                    Ticket description text...
+                </div>
+                
+                <h4 class="section-title mt-4">Activity Log & Comments</h4>
+                <div class="notes-feed scrollable mb-3" id="modal-ticket-notes">
+                    <!-- Notes entries -->
+                </div>
+                
+                <div class="add-note-form flex gap-2">
+                    <input type="text" id="input-new-note" placeholder="Write a developer comment or resolution update..." class="text-input flex-grow">
+                    <button class="btn btn-outline" id="btn-add-note">Add</button>
+                </div>
+            </div>
+            
+            <div class="ticket-side-details border-left pl-4">
+                <div class="form-group">
+                    <label>Workflow Status</label>
+                    <select id="modal-ticket-status" class="select-input">
+                        <option value="backlog">Backlog</option>
+                        <option value="todo">To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Resolved</option>
+                    </select>
+                </div>
+                
+                <div class="form-group mt-3">
+                    <label>Severity</label>
+                    <select id="modal-ticket-severity" class="select-input">
+                        <option value="critical">Critical</option>
+                        <option value="warning">Warning</option>
+                        <option value="suggestion">Suggestion</option>
+                    </select>
+                </div>
+                
+                <div class="form-group mt-3">
+                    <label>Assignee</label>
+                    <input type="text" id="modal-ticket-assignee" class="text-input" placeholder="Developer name">
+                </div>
+                
+                <div class="ticket-meta-info mt-4 pt-3 border-top">
+                    <div class="meta-row">
+                        <span class="lbl">Created:</span>
+                        <span class="val" id="modal-ticket-date">-</span>
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-3 border-top flex-column gap-2">
+                    <button class="btn btn-outline-red btn-block" id="btn-delete-ticket">
+                        <i data-lucide="trash-2"></i> Delete Ticket
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+    
+    <!-- 3. TICKET CREATION DIALOG (NATIVE MODAL) -->
+    <dialog id="modal-create-ticket" class="glass-modal">
+        <div class="modal-header border-bottom">
+            <h3><i data-lucide="plus-circle"></i> Create Bug Task Ticket</h3>
+            <button class="modal-close-btn" onclick="document.getElementById('modal-create-ticket').close()">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="create-ticket-form">
+                <div class="form-group">
+                    <label for="create-ticket-title">Task Title</label>
+                    <input type="text" id="create-ticket-title" placeholder="e.g. Fix integer division in calculator.py" required class="text-input">
+                </div>
+                <div class="form-group mt-3">
+                    <label for="create-ticket-desc">Details / Description</label>
+                    <textarea id="create-ticket-desc" placeholder="Describe the bug, file name, and recommended solution details..." required class="text-area-input" rows="4"></textarea>
+                </div>
+                <div class="grid grid-2 mt-3 gap-3">
+                    <div class="form-group">
+                        <label for="create-ticket-severity">Severity</label>
+                        <select id="create-ticket-severity" class="select-input">
+                            <option value="critical">Critical</option>
+                            <option value="warning" selected>Warning</option>
+                            <option value="suggestion">Suggestion</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="create-ticket-assignee">Assignee</label>
+                        <input type="text" id="create-ticket-assignee" class="text-input" value="Developer">
+                    </div>
+                </div>
+                
+                <div class="flex-end gap-2 mt-4">
+                    <button type="button" class="btn btn-outline" onclick="document.getElementById('modal-create-ticket').close()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Ticket</button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+    
+    <!-- Prism Syntax Highlighting Helper scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    
+    <!-- Application Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
